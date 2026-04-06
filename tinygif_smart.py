@@ -4,7 +4,7 @@ import numpy as np
 import platform
 from PIL import Image, ImageSequence
 from rich.console import Console
-from rich.panel import Panel
+from diagnostic import SystemMonitor
 from rich.prompt import Prompt, IntPrompt, Confirm
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 from rich.text import Text
@@ -182,14 +182,22 @@ def main():
         f"[bold]Processor:[/bold] {platform.processor() or 'Unknown CPU'}\n"
         f"[bold]Compute Power:[/bold] {os.cpu_count()} Logical Cores"
     )
-    console.print(Panel(cpu_info_text, title="💻 System Info", border_style="blue", expand=False))
+    console.print(Panel(cpu_info_text, title="💻 Processing Power Info", border_style="blue", expand=False))
 
     console.print("\n[bold cyan]Starting compression...[/bold cyan]")
     
     original_size = os.path.getsize(input_path)
     
+    # Start diagnostics monitor
+    monitor = SystemMonitor(interval=0.5)
+    monitor.start()
+    
     # Process the GIF
     result = process_gif(input_path, output_path, tolerance, big_brain)
+
+    # Stop diagnostics monitor and save the graph
+    diag_filename = f"{os.path.splitext(output_path)[0]}_diagnostics.png"
+    monitor.stop(diag_filename)
 
     if result.get("success"):
         new_size = os.path.getsize(output_path)
@@ -211,7 +219,8 @@ def main():
             results_text += "\n[bold yellow]Note:[/bold yellow] The file size increased. This can happen on already highly optimized GIFs or very low tolerance settings."
             
         console.print(Panel(results_text, border_style="green", expand=False))
-        console.print(f"\n[dim]Saved to: {output_path}[/dim]\n")
+        console.print(f"\n[dim]Saved to: {output_path}[/dim]")
+        console.print(f"[dim]Diagnostics saved to: {diag_filename}[/dim]\n")
     else:
         console.print("\n[bold red]Compression failed.[/bold red]\n")
 

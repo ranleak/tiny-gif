@@ -7,6 +7,7 @@ from rich.prompt import Prompt, IntPrompt, Confirm
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
+from diagnostic import SystemMonitor
 
 console = Console()
 
@@ -96,10 +97,14 @@ def main():
         f"[bold]Processor:[/bold] {platform.processor() or 'Unknown CPU'}\n"
         f"[bold]Compute Power:[/bold] {os.cpu_count()} Logical Cores"
     )
-    console.print(Panel(cpu_info_text, title="💻 System Info", border_style="blue", expand=False))
+    console.print(Panel(cpu_info_text, title="💻 Processing Power Info", border_style="blue", expand=False))
 
     # --- 4. Processing ---
     processed_frames = []
+    
+    # Start diagnostics monitor
+    monitor = SystemMonitor(interval=0.5)
+    monitor.start()
     
     console.print()
     with Progress(
@@ -159,6 +164,10 @@ def main():
             console.print(f"[bold red]❌ Failed to save GIF: {e}[/bold red]")
             sys.exit(1)
 
+    # Stop diagnostics monitor and save the graph
+    diag_filename = f"{os.path.splitext(out_path)[0]}_diagnostics.png"
+    monitor.stop(diag_filename)
+
     # --- 6. Results ---
     new_size_bytes = os.path.getsize(out_path)
     reduction = 100 - ((new_size_bytes / orig_size_bytes) * 100)
@@ -182,7 +191,8 @@ def main():
     
     console.print(res_table)
     console.print(f"\n{trend} [bold]Space Saved: [{color}]{reduction:.2f}%[/{color}][/bold]")
-    console.print(f"✨ [bold green]Done! Saved to {out_path}[/bold green]\n")
+    console.print(f"✨ [bold green]Done! Saved to {out_path}[/bold green]")
+    console.print(f"📊 [bold cyan]Diagnostics saved to {diag_filename}[/bold cyan]\n")
 
 if __name__ == "__main__":
     try:
