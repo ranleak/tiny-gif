@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import platform
 from PIL import Image, ImageSequence
 from rich.console import Console
 from rich.panel import Panel
@@ -173,6 +174,15 @@ def main():
     tolerance = IntPrompt.ask("[bold yellow]Enter optimization tolerance (1-100)[/bold yellow]", default=20)
     
     big_brain = Confirm.ask("\n[bold magenta]🧠 Enable 'Big Brain' mode? (Drops nearly identical frames to save more space)[/bold magenta]", default=False)
+
+    console.print()
+    # Display CPU / Processing Info before conversion
+    cpu_info_text = (
+        f"[bold]System:[/bold] {platform.system()} {platform.release()} ({platform.machine()})\n"
+        f"[bold]Processor:[/bold] {platform.processor() or 'Unknown CPU'}\n"
+        f"[bold]Compute Power:[/bold] {os.cpu_count()} Logical Cores"
+    )
+    console.print(Panel(cpu_info_text, title="💻 System Info", border_style="blue", expand=False))
 
     console.print("\n[bold cyan]Starting compression...[/bold cyan]")
     

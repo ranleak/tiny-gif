@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 from PIL import Image, ImageSequence
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt, Confirm
@@ -87,6 +88,15 @@ def main():
     default_out = os.path.join(dir_name, f"{name}_optimized.gif")
     
     out_path = Prompt.ask("\n💾 [cyan]Output file path[/cyan]", default=default_out)
+
+    console.print()
+    # Display CPU / Processing Info before conversion
+    cpu_info_text = (
+        f"[bold]System:[/bold] {platform.system()} {platform.release()} ({platform.machine()})\n"
+        f"[bold]Processor:[/bold] {platform.processor() or 'Unknown CPU'}\n"
+        f"[bold]Compute Power:[/bold] {os.cpu_count()} Logical Cores"
+    )
+    console.print(Panel(cpu_info_text, title="💻 System Info", border_style="blue", expand=False))
 
     # --- 4. Processing ---
     processed_frames = []
