@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import platform
 from PIL import Image, ImageSequence
+from rich.panel import Panel
 from rich.console import Console
 from diagnostic import SystemMonitor
 from rich.prompt import Prompt, IntPrompt, Confirm
