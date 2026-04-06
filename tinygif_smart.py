@@ -19,7 +19,7 @@ def format_size(size_in_bytes):
         size_in_bytes /= 1024.0
     return f"{size_in_bytes:.2f} TB"
 
-def process_gif(input_path, output_path, tolerance=15):
+def process_gif(input_path, output_path, tolerance=15, big_brain_mode=False):
     """
     Core smart compression logic.
     Analyzes frame-by-frame deltas and masks out minor visual changes (noise/small details)
@@ -29,7 +29,7 @@ def process_gif(input_path, output_path, tolerance=15):
         img = Image.open(input_path)
     except Exception as e:
         console.print(f"[bold red]Error opening image:[/bold red] {e}")
-        return False
+        return {"success": False}
 
     # Get total frames if possible for progress bar
     try:
@@ -67,6 +67,7 @@ def process_gif(input_path, output_path, tolerance=15):
         
         np_frames = [np.array(f) for f in frames]
         optimized_frames = [np_frames[0]]
+        new_durations = [durations[0]]
         progress.update(optimize_task, advance=1)
 
         for i in range(1, total_frames):
@@ -84,14 +85,25 @@ def process_gif(input_path, output_path, tolerance=15):
             # These are "unneeded details" or noise. We replace them with the previous frame's pixels.
             mask = color_distance < tolerance
 
+            if big_brain_mode:
+                changed_pixels = np.count_nonzero(~mask)
+                total_pixels = curr.shape[0] * curr.shape[1]
+                # If less than 2% of pixels changed significantly, drop the frame
+                if (changed_pixels / total_pixels) < 0.02:
+                    # Add its duration to the previous frame to keep the animation speed identical
+                    new_durations[-1] += durations[i]
+                    progress.update(optimize_task, advance=1)
+                    continue
+
             new_curr = curr.copy()
             new_curr[mask] = prev[mask] # Copy unchanged/minor changed pixels from the previous frame
 
             optimized_frames.append(new_curr)
+            new_durations.append(durations[i])
             progress.update(optimize_task, advance=1)
 
         # Step 3: Encoding and Saving
-        save_task = progress.add_task("[green]Encoding and saving optimized GIF...", total=total_frames)
+        save_task = progress.add_task("[green]Encoding and saving optimized GIF...", total=len(optimized_frames))
         
         # Convert back to PIL Image objects
         final_pil_frames = []
@@ -104,12 +116,16 @@ def process_gif(input_path, output_path, tolerance=15):
             output_path,
             save_all=True,
             append_images=final_pil_frames[1:],
-            duration=durations,
+            duration=new_durations,
             loop=img.info.get('loop', 0),
             optimize=True # Enables bounding box / transparency optimization
         )
 
-    return True
+    return {
+        "success": True,
+        "frames_dropped": total_frames - len(optimized_frames),
+        "original_frames": total_frames
+    }
 
 def main():
     console.clear()
@@ -155,15 +171,17 @@ def main():
     console.print("[dim]• 30+: Aggressive, may introduce 'ghosting' artifacts but creates tiny files.[/dim]")
     
     tolerance = IntPrompt.ask("[bold yellow]Enter optimization tolerance (1-100)[/bold yellow]", default=20)
+    
+    big_brain = Confirm.ask("\n[bold magenta]🧠 Enable 'Big Brain' mode? (Drops nearly identical frames to save more space)[/bold magenta]", default=False)
 
     console.print("\n[bold cyan]Starting compression...[/bold cyan]")
     
     original_size = os.path.getsize(input_path)
     
     # Process the GIF
-    success = process_gif(input_path, output_path, tolerance)
+    result = process_gif(input_path, output_path, tolerance, big_brain)
 
-    if success:
+    if result.get("success"):
         new_size = os.path.getsize(output_path)
         reduction = 100 - ((new_size / original_size) * 100) if original_size > 0 else 0
         
@@ -173,11 +191,14 @@ def main():
             f"[bold green]✅ Compression Complete![/bold green]\n\n"
             f"[bold]Original Size:[/bold] {format_size(original_size)}\n"
             f"[bold]New Size:[/bold]      {format_size(new_size)}\n"
-            f"[bold]Reduction:[/bold]     [bold cyan]{reduction:.1f}%[/bold cyan] smaller"
+            f"[bold]Reduction:[/bold]     [bold cyan]{reduction:.1f}%[/bold cyan] smaller\n"
         )
         
+        if big_brain:
+            results_text += f"[bold magenta]Frames Dropped:[/bold magenta] {result['frames_dropped']} / {result['original_frames']}\n"
+            
         if reduction < 0:
-            results_text += "\n\n[bold yellow]Note:[/bold yellow] The file size increased. This can happen on already highly optimized GIFs or very low tolerance settings."
+            results_text += "\n[bold yellow]Note:[/bold yellow] The file size increased. This can happen on already highly optimized GIFs or very low tolerance settings."
             
         console.print(Panel(results_text, border_style="green", expand=False))
         console.print(f"\n[dim]Saved to: {output_path}[/dim]\n")

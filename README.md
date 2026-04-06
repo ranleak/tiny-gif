@@ -16,4 +16,4 @@ pip install numpy
 Regular TinyGIF has the standard features for a GIF compressor. It runs very well on pretty much any CPU, from 2 core to 64 core!
 
 ## Smart Mode
-Smart mode is better when you don't want to lower the resolution of an un-optimized GIF. It lowers file size by removing redundant pixel changes. This uses a Computer Vision/Heuristic Delta algorithm.
+Smart mode is better when you don't want to lower the resolution of an un-optimized GIF. It lowers file size by removing redundant pixel changes. This uses a Computer Vision/Heuristic Delta algorithm. Big Brain mode allows the algorith to automatically remove frames it deems aren't important, although for the best results use this on simpler files, it can affect smooth animations negatively.
